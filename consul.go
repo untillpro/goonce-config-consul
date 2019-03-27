@@ -1,24 +1,27 @@
-package main
+package config
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/untillpro/igoonce/iconfig"
 	"io"
 	"net/http"
 	"strings"
 
+	"github.com/untillpro/igoonce/iconfig"
+
 	"github.com/untillpro/godif"
 )
 
+// Declare s.e.
 func Declare() {
-	godif.Provide(&iconfig.GetCurrentAppConfig, GetCurrentAppConfig)
-	godif.Provide(&iconfig.PutCurrentAppConfig, PutCurrentAppConfig)
+	godif.Provide(&iconfig.GetCurrentAppConfig, getCurrentAppConfig)
+	godif.Provide(&iconfig.PutCurrentAppConfig, putCurrentAppConfig)
 }
 
 func main() {
+
 	a := ConsulConfig{"127.0.0.1", "a", 8500}
 	b, c := a.getConfig()
 	if c != nil {
@@ -86,14 +89,14 @@ func Init(ctx context.Context, host, prefix string, port int) context.Context {
 	return context.WithValue(ctx, consul, cfg)
 }
 
-func GetCurrentAppConfig(ctx context.Context) (value interface{}, err error) {
+func getCurrentAppConfig(ctx context.Context) (value interface{}, err error) {
 	consulConfig := ctx.Value(consul).(*ConsulConfig)
 	currentAppConfig, err := consulConfig.getConfig()
 	return currentAppConfig, err
 
 }
 
-func PutCurrentAppConfig(ctx context.Context) (value interface{}, err error) {
+func putCurrentAppConfig(ctx context.Context) (value interface{}, err error) {
 	return nil, nil
 }
 
