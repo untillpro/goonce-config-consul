@@ -1,15 +1,13 @@
-package config
+package main
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/untillpro/igoonce/iconfig"
 	"io"
 	"net/http"
-	"strings"
-
-	"github.com/untillpro/igoonce/iconfig"
 
 	"github.com/untillpro/godif"
 )
@@ -21,22 +19,16 @@ func Declare() {
 }
 
 func main() {
-
-	a := ConsulConfig{"127.0.0.1", "a", 8500}
+	a := ConsulConfig{"127.0.0.1", "foo", 8500}
+	c := a.putConfig(map[string]interface{}{"foo": ConsulConfig{"a", "b", 12}})
 	b, c := a.getConfig()
 	if c != nil {
 		panic(c)
 	}
 	fmt.Println(b)
-	c = a.putConfig(map[string]string{"hz": "hz", "mb": "mb"})
 	if c != nil {
 		panic(c)
 	}
-	xz, c := a.getConfig()
-	if c != nil {
-		panic(c)
-	}
-	fmt.Println(xz)
 	//x := b.([]map[string]interface{})[0]["Value"]
 	//xz,_ := base64.StdEncoding.DecodeString(x.(string))
 	//fmt.Println(string(xz))
@@ -89,60 +81,48 @@ func Init(ctx context.Context, host, prefix string, port int) context.Context {
 	return context.WithValue(ctx, consul, cfg)
 }
 
-func getCurrentAppConfig(ctx context.Context) (value interface{}, err error) {
+func getCurrentAppConfig(ctx context.Context) (value map[string]interface{}, err error) {
 	consulConfig := ctx.Value(consul).(*ConsulConfig)
 	currentAppConfig, err := consulConfig.getConfig()
 	return currentAppConfig, err
 
 }
 
-func putCurrentAppConfig(ctx context.Context) (value interface{}, err error) {
-	return nil, nil
+func putCurrentAppConfig(ctx context.Context, value map[string]interface{}) (err error) {
+	return nil
 }
 
-func (c *ConsulConfig) getConfig() (value interface{}, err error) {
-	resp, err := http.Get(fmt.Sprintf("http://%s:%d/v1/kv/%s/?recurse", c.host, c.port, c.prefix))
+func (c *ConsulConfig) getConfig() (value map[string]interface{}, err error) {
+	resp, err := http.Get(fmt.Sprintf("http://%s:%d/v1/kv/%s", c.host, c.port, c.prefix))
 	if err != nil {
 		return nil, err
 	}
 	if resp.StatusCode == 404 {
 		resp.Body.Close()
-		//TODO spec error for this
-		return nil, fmt.Errorf("config for prefix %s is empty", c.prefix)
+		return make(map[string]interface{}, 0), nil
 	} else if resp.StatusCode != 200 {
 		resp.Body.Close()
 		return nil, fmt.Errorf("unexpected response code: %d", resp.StatusCode)
 	}
-	var entries []*ConsulEntry
-	err = decodeBody(resp, &entries)
+	var entry *ConsulEntry
+	err = decodeBody(resp, &entry)
 	if err != nil {
 		return nil, err
 	}
-	config := c.consulValuesToMap(entries)
+	config := make(map[string]interface{}, 1)
+	config[entry.Key] = entry.Value
 	return config, err
 }
 
-func (c *ConsulConfig) consulValuesToMap(consulValues []*ConsulEntry) map[string]string {
-	config := make(map[string]string)
-	for _, entry := range consulValues {
-		config[substringAfter(entry.Key, c.prefix+"/")] = string(entry.Value)
+func (c *ConsulConfig) putConfig(value map[string]interface{}) error {
+	body, err := encodeBody(value)
+	if err != nil {
+		return err
 	}
-	return config
-}
-
-func (c *ConsulConfig) putConfig(value interface{}) error {
-	//body, err := encodeBody(value)
-	//if err != nil {
-	//	return err
-	//}
-	fasdf := value.(map[string]string)
-	for k, v := range fasdf {
-		resp, err := http.NewRequest("PUT", fmt.Sprintf("http://%s:%d/v1/kv/%s/%s", c.host, c.port,
-			c.prefix, k), bytes.NewBufferString(v))
-		if err != nil {
-			return err
-		}
-		fmt.Println(resp.Body)
+	_, err = http.NewRequest("PUT", fmt.Sprintf("http://%s:%d/v1/kv/%s", c.host, c.port,
+		c.prefix), body)
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -152,23 +132,11 @@ func decodeBody(resp *http.Response, out interface{}) error {
 	return dec.Decode(out)
 }
 
-func encodeBody(obj interface{}) (io.Reader, error) {
+func encodeBody(value map[string]interface{}) (io.Reader, error) {
 	buf := bytes.NewBuffer(nil)
 	enc := json.NewEncoder(buf)
-	if err := enc.Encode(obj); err != nil {
+	if err := enc.Encode(value); err != nil {
 		return nil, err
 	}
 	return buf, nil
-}
-
-func substringAfter(value string, a string) string {
-	pos := strings.LastIndex(value, a)
-	if pos <= -1 {
-		return ""
-	}
-	adjustedPos := pos + len(a)
-	if adjustedPos >= len(value) {
-		return ""
-	}
-	return value[adjustedPos:]
 }
