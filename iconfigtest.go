@@ -38,7 +38,7 @@ var InitIConfigImplementation func() context.Context
 func TestIConfig(t *testing.T) {
 	require.NotNil(t, InitIConfigImplementation, "Need to provide function InitIConfigImplementation to init "+
 		"current iconfig implementation")
-	TestConsulConfig(t)
+	TestPutGet(t)
 	TestNilConfig(t)
 	TestNotPointerInGet(t)
 	TestGetWrongStruct(t)
@@ -48,7 +48,7 @@ func TestIConfig(t *testing.T) {
 var testConfig1 = testConfig{"ac", 3, true, []string{"assert", "b", "c"},
 	map[string]float64{"assert": 1.1, "b": 2.2}}
 
-func TestConsulConfig(t *testing.T) {
+func TestPutGet(t *testing.T) {
 	ctx := InitIConfigImplementation()
 	defer godif.Reset()
 	err := iconfig.PutCurrentAppConfig(ctx, &testConfig1)
