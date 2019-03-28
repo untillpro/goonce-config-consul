@@ -41,7 +41,7 @@ func TestIConfig(t *testing.T) {
 	TestConsulConfig(t)
 	TestNilConfig(t)
 	TestNotPointerInGet(t)
-	TestGetWrongStructFromConsul(t)
+	TestGetWrongStruct(t)
 	TestPutGetDifferentStructs(t)
 }
 
@@ -76,7 +76,7 @@ func TestNotPointerInGet(t *testing.T) {
 	require.NotNil(t, err)
 }
 
-func TestGetWrongStructFromConsul(t *testing.T) {
+func TestGetWrongStruct(t *testing.T) {
 	ctx := InitIConfigImplementation()
 	defer godif.Reset()
 	err := iconfig.PutCurrentAppConfig(ctx, &testConfig1)
