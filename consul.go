@@ -1,15 +1,16 @@
-package main
+package config
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/untillpro/godif"
 	"github.com/untillpro/igoonce/iconfig"
 	"io"
 	"net/http"
-
-	"github.com/untillpro/godif"
+	"reflect"
 )
 
 // Declare s.e.
@@ -18,29 +19,13 @@ func Declare() {
 	godif.Provide(&iconfig.PutCurrentAppConfig, putCurrentAppConfig)
 }
 
-func main() {
-	a := ConsulConfig{"127.0.0.1", "foo", 8500}
-	c := a.putConfig(map[string]interface{}{"foo": ConsulConfig{"a", "b", 12}})
-	b, c := a.getConfig()
-	if c != nil {
-		panic(c)
-	}
-	fmt.Println(b)
-	if c != nil {
-		panic(c)
-	}
-	//x := b.([]map[string]interface{})[0]["Value"]
-	//xz,_ := base64.StdEncoding.DecodeString(x.(string))
-	//fmt.Println(string(xz))
-}
-
 type consulKey int
 
 const consul consulKey = 0
 
 type ConsulConfig struct {
 	host, prefix string
-	port         int
+	port         uint16
 }
 
 // KVPair is used to represent a single K/V entry
@@ -76,63 +61,96 @@ type ConsulEntry struct {
 	Session string
 }
 
-func Init(ctx context.Context, host, prefix string, port int) context.Context {
+func Init(ctx context.Context, host, prefix string, port uint16) (context.Context, error) {
+	if host == "" {
+		return nil, errors.New("host can't be empty")
+	}
+	if prefix == "" {
+		return nil, errors.New("passed prefix can't be empty string")
+	}
+	if port == 0 {
+		return nil, fmt.Errorf("passed port is invalid: %d", port)
+	}
+	if ctx == nil {
+		return nil, errors.New("passed ctx can't be nil, pass context.TODO instead")
+	}
 	cfg := ConsulConfig{host, prefix, port}
-	return context.WithValue(ctx, consul, cfg)
+	return context.WithValue(ctx, consul, cfg), nil
 }
 
-func getCurrentAppConfig(ctx context.Context) (value map[string]interface{}, err error) {
-	consulConfig := ctx.Value(consul).(*ConsulConfig)
-	currentAppConfig, err := consulConfig.getConfig()
-	return currentAppConfig, err
-
+//Empty implementation
+func Finit() {
+	//
 }
 
-func putCurrentAppConfig(ctx context.Context, value map[string]interface{}) (err error) {
-	return nil
+func getCurrentAppConfig(ctx context.Context, config interface{}) error {
+	rv := reflect.ValueOf(config)
+	if rv.Kind() != reflect.Ptr || rv.IsNil() {
+		return fmt.Errorf("%s must be a pointer", reflect.ValueOf(config))
+	}
+	consulConfig := ctx.Value(consul).(ConsulConfig)
+	err := consulConfig.getConfig(config)
+	return err
 }
 
-func (c *ConsulConfig) getConfig() (value map[string]interface{}, err error) {
+func putCurrentAppConfig(ctx context.Context, config interface{}) error {
+	if reflect.ValueOf(config).IsNil() {
+		return errors.New("testConfig1 must not be nil")
+	}
+	consulConfig := ctx.Value(consul).(ConsulConfig)
+	err := consulConfig.putConfig(config)
+	return err
+}
+
+func (c *ConsulConfig) getConfig(config interface{}) error {
 	resp, err := http.Get(fmt.Sprintf("http://%s:%d/v1/kv/%s", c.host, c.port, c.prefix))
+	defer resp.Body.Close()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if resp.StatusCode == 404 {
-		resp.Body.Close()
-		return make(map[string]interface{}, 0), nil
+		return fmt.Errorf("no testConfig1 for %s in consul", c.prefix)
 	} else if resp.StatusCode != 200 {
-		resp.Body.Close()
-		return nil, fmt.Errorf("unexpected response code: %d", resp.StatusCode)
+		return fmt.Errorf("unexpected response code: %d", resp.StatusCode)
 	}
-	var entry *ConsulEntry
-	err = decodeBody(resp, &entry)
-	if err != nil {
-		return nil, err
-	}
-	config := make(map[string]interface{}, 1)
-	config[entry.Key] = entry.Value
-	return config, err
-}
-
-func (c *ConsulConfig) putConfig(value map[string]interface{}) error {
-	body, err := encodeBody(value)
-	if err != nil {
-		return err
-	}
-	_, err = http.NewRequest("PUT", fmt.Sprintf("http://%s:%d/v1/kv/%s", c.host, c.port,
-		c.prefix), body)
+	err = decodeBody(resp, config)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func decodeBody(resp *http.Response, out interface{}) error {
-	dec := json.NewDecoder(resp.Body)
-	return dec.Decode(out)
+func (c *ConsulConfig) putConfig(config interface{}) error {
+	body, err := encodeBody(config)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest("PUT", fmt.Sprintf("http://%s:%d/v1/kv/%s", c.host, c.port,
+		c.prefix), body)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	defer resp.Body.Close()
+	if err != nil {
+		panic(err)
+	}
+	return nil
 }
 
-func encodeBody(value map[string]interface{}) (io.Reader, error) {
+func decodeBody(resp *http.Response, value interface{}) error {
+	var entry []*ConsulEntry
+	dec := json.NewDecoder(resp.Body)
+	err := dec.Decode(&entry)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(entry[0].Value, &value)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func encodeBody(value interface{}) (io.Reader, error) {
 	buf := bytes.NewBuffer(nil)
 	enc := json.NewEncoder(buf)
 	if err := enc.Encode(value); err != nil {
