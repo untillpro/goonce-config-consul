@@ -33,6 +33,7 @@ type maxTestConfig struct {
 	Param6 map[string]interface{}
 }
 
+//InitIConfigImplementation should be impl in all child tests and return ctx to use current interface implementation
 var InitIConfigImplementation func() context.Context
 
 func TestIConfig(t *testing.T) {

@@ -61,6 +61,7 @@ type ConsulEntry struct {
 	Session string
 }
 
+//Init config to use Consul HTTP API
 func Init(ctx context.Context, host, prefix string, port uint16) (context.Context, error) {
 	if host == "" {
 		return nil, errors.New("host can't be empty")

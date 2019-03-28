@@ -21,6 +21,7 @@ func randStringBytes(n int) string {
 	return string(b)
 }
 
+//Need to start consul first!
 func TestConsul(t *testing.T) {
 	InitIConfigImplementation = func() context.Context {
 		godif.Reset()
