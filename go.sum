@@ -12,5 +12,7 @@ github.com/stretchr/testify v1.3.0 h1:TivCn/peBQ7UY8ooIcPgZFpTNSz0Q2U6UrFlUfqbe0
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
 github.com/untillpro/godif v0.1.0 h1:22UxQs+jsAMxb4zEre5D+i5ZKxpLyzsldczJKpnDb3Y=
 github.com/untillpro/godif v0.1.0/go.mod h1:8/dbnhMGMZ2TMvPwBvGMrvg5ELL4VW4jmr1SOuarx2I=
+github.com/untillpro/godif v0.2.0 h1:To9VAOacW5iDmJBbv6ugeGVVMruF4ybOQ1RQ5ava0TE=
+github.com/untillpro/godif v0.2.0/go.mod h1:8/dbnhMGMZ2TMvPwBvGMrvg5ELL4VW4jmr1SOuarx2I=
 github.com/untillpro/igoonce v0.6.0 h1:/YnT/lTXbOZ287w3PO1IfAABsHLACKa6NMvt8HlA0GA=
 github.com/untillpro/igoonce v0.6.0/go.mod h1:FB89FTyPGl+sOSibPdjsJbnttwIXKYH3+8UiAbyblCY=
