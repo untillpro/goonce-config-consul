@@ -1,4 +1,4 @@
-package goonce_config_consul
+package config
 
 import (
 	"context"
