@@ -1,4 +1,4 @@
-module config
+module goonce_config_consul
 
 go 1.12
 
