@@ -1,4 +1,4 @@
-module goonce_config_consul
+module github.com/untillpto/goonce-config-consul
 
 go 1.12
 
